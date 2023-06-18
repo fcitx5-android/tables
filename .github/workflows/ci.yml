@@ -35,4 +35,4 @@ jobs:
           prerelease: true
           title: "Development Build"
           files: |
-            build/*.jar
+            build/*.zip
