@@ -1,0 +1,6 @@
+[submodule "fcitx5-table-extra"]
+	path = fcitx5-table-extra
+	url = git@github.com:fcitx/fcitx5-table-extra.git
+[submodule "fcitx5-table-other"]
+	path = fcitx5-table-other
+	url = git@github.com:fcitx/fcitx5-table-other.git
