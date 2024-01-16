@@ -24,9 +24,7 @@ jobs:
       - name: Build
         run: |
           export LANG=C.UTF-8
-          mkdir build
-          cd build
-          runghc ../Main.hs -j everything
+          runghc ./Main.hs -j everything
 
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:

@@ -1,20 +1,11 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Main where
 
-import Control.Monad (forM_, void)
-import Data.List.Extra (find)
-import Data.Maybe (fromJust)
+import Control.Monad (forM_)
 import Development.Shake
-import Development.Shake.Classes
 import Development.Shake.FilePath
-import GHC.Generics (Generic)
-import GHC.Stack (HasCallStack, SrcLoc (srcLocFile), callStack, getCallStack, withFrozenCallStack)
-import System.Directory.Extra (canonicalizePath)
 
 extraTableNames :: [String]
 extraTableNames =
@@ -67,14 +58,24 @@ otherTableNames =
 tablesVersion :: String
 tablesVersion = "1"
 
+outputDir :: FilePath
+outputDir = "build"
+
 main :: IO ()
-main = shakeArgs shakeOptions {shakeReport = ["report.html"], shakeVersion = tablesVersion} $ do
-  mainPathRule
-  forM_ extraTableNames $ tableIMRule "fcitx5-table-extra"
-  forM_ otherTableNames $ tableIMRule "fcitx5-table-other"
-  "fcitx5-table-extra" ~> need [name <.> "zip" | name <- extraTableNames]
-  "fcitx5-table-other" ~> need [takeBaseName name <.> "zip" | name <- otherTableNames]
-  "everything" ~> need ["fcitx5-table-extra", "fcitx5-table-other"]
+main = shakeArgs
+  shakeOptions
+    { shakeReport = ["report.html"],
+      shakeVersion = tablesVersion,
+      shakeFiles = outputDir
+    }
+  $ do
+    forM_ extraTableNames $ tableIMRule "fcitx5-table-extra"
+    forM_ otherTableNames $ tableIMRule "fcitx5-table-other"
+    "fcitx5-table-extra" ~> need [outputDir </> name <.> "zip" | name <- extraTableNames]
+    "fcitx5-table-other" ~> need [outputDir </> takeBaseName name <.> "zip" | name <- otherTableNames]
+    "everything" ~> need ["fcitx5-table-extra", "fcitx5-table-other"]
+    "clean" ~> do
+      removeFilesAfter outputDir ["//*"]
 
 --------------------------------------------------------------------------------
 
@@ -83,49 +84,19 @@ tableIMRule fp name = do
   -- @tableName@ is the name of the table
   -- while @name@ is the path to the table relative to fcitx5-table-extra or fcitx5-table-other
   let tableName = takeBaseName name
-      conf = tableName <.> "conf"
-      dict = tableName <.> "main" <.> "dict"
-      packaged = tableName <.> "zip"
+      conf = outputDir </> tableName <.> "conf"
+      dict = outputDir </> tableName <.> "main" <.> "dict"
+      packaged = outputDir </> tableName <.> "zip"
   conf %> \out -> do
-    src <- getCanonicalizedRootSrc $ fp </> "tables" </> name <.> "conf" <.> "in"
-    poDir <- getCanonicalizedRootSrc $ fp </> "po"
+    let src = fp </> "tables" </> name <.> "conf" <.> "in"
+        poDir = fp </> "po"
     _ <- getDirectoryFiles poDir ["*.po"]
     need [src]
     cmd_ "msgfmt" "-d" poDir "--desktop" "--template" src "-o" out
   dict %> \out -> do
-    src <- getCanonicalizedRootSrc $ fp </> "tables" </> name <.> "txt"
+    let src = fp </> "tables" </> name <.> "txt"
     need [src]
     cmd_ "libime_tabledict" src out
   packaged %> \_ -> do
     need [dict, conf]
-    cmd_ "zip" tableName dict conf
-
---------------------------------------------------------------------------------
-
-data MainPath = MainPath
-  deriving (Show, Typeable, Eq, Generic, Hashable, Binary, NFData)
-
-type instance RuleResult MainPath = FilePath
-
-getCanonicalizedRootSrc :: FilePath -> Action FilePath
-getCanonicalizedRootSrc fp = do
-  root <- askOracle MainPath
-  liftIO . canonicalizePath $ root </> fp
-
-mainPathRule :: Rules ()
-mainPathRule = void $
-  addOracleCache $
-    \MainPath -> takeDirectory <$> liftIO getMainPath
-
-getMainPath :: HasCallStack => IO FilePath
-getMainPath =
-  withFrozenCallStack
-    $ canonicalizePath
-      . srcLocFile
-      . snd
-      . fromJust
-      . find ((== "getMainPath") . fst)
-      . getCallStack
-    $ callStack
-
---------------------------------------------------------------------------------
+    cmd_ (Cwd outputDir) "zip" tableName (takeFileName dict) (takeFileName conf)
