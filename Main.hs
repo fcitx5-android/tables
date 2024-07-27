@@ -32,7 +32,8 @@ extraTableNames =
     "t9",
     "wubi98",
     "wubi98-pinyin",
-    "wubi98-single"
+    "wubi98-single",
+    "wubi98-large"
   ]
 
 otherTableNames :: [String]
@@ -73,7 +74,7 @@ main = shakeArgs
     forM_ otherTableNames $ tableIMRule "fcitx5-table-other"
     "fcitx5-table-extra" ~> need [outputDir </> name <.> "zip" | name <- extraTableNames]
     "fcitx5-table-other" ~> need [outputDir </> takeBaseName name <.> "zip" | name <- otherTableNames]
-    "everything" ~> need ["fcitx5-table-extra", "fcitx5-table-other"]
+    "build" ~> need ["fcitx5-table-extra", "fcitx5-table-other"]
     "clean" ~> do
       removeFilesAfter outputDir ["//*"]
 
