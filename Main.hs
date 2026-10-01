@@ -40,6 +40,7 @@ otherTableNames :: [String]
 otherTableNames =
   [ "am/amharic",
     "ar/arabic",
+    "eo/esperanto_x",
     "ml/malayalam-phonetic",
     "ta/tamil-remington",
     "other/cns11643",
